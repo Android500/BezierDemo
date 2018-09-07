@@ -10,7 +10,10 @@ import android.graphics.Path;
 import android.graphics.PathEffect;
 import android.graphics.PathMeasure;
 import android.graphics.Point;
+import android.graphics.PointF;
+import android.os.Debug;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
 import java.util.List;
@@ -21,13 +24,11 @@ import java.util.List;
 
 public class BezierView extends View {
     private float lineSmoothness = 0.2f;
-    private List<Point> mPointList;
+    private List<PointF> mPointList;
     private Path mPath;
     private Path mAssistPath;
     private float drawScale = 1f;
     private PathMeasure mPathMeasure;
-    private float defYAxis = 700f;
-    private float defXAxis = 10f;
 
     public BezierView(Context context) {
         super(context);
@@ -37,9 +38,18 @@ public class BezierView extends View {
         super(context, attrs);
     }
 
-    public void setPointList(List<Point> pointList) {
+    public void setPointList(List<PointF> pointList) {
         mPointList = pointList;
         measurePath();
+        testWaveVerts("setPointList");
+    }
+    float[] pos = new float[2];
+
+    private void testWaveVerts(String tag){
+        for(PointF point : mPointList){
+            mPathMeasure.getPosTan(point.x, pos, null);
+            Log.e(tag, "x: " + point.x + "  pos[0]:  " + pos[0] + "  pos[1]: " + pos[1]);
+        }
     }
 
     public void setLineSmoothness(float lineSmoothness) {
@@ -49,33 +59,23 @@ public class BezierView extends View {
             postInvalidate();
         }
     }
-
-    public void setDrawScale(float drawScale) {
-        this.drawScale = drawScale;
-        postInvalidate();
-    }
-
-    public void startAnimation(long duration) {
-        ObjectAnimator animator = ObjectAnimator.ofFloat(this, "drawScale", 0f, 1f);
-        animator.setDuration(duration);
-        animator.start();
-    }
-
     @Override
     protected void onDraw(Canvas canvas) {
         if (mPointList == null)
             return;
         //measurePath();
         Paint paint = new Paint();
-        paint.setColor(Color.RED);
+        paint.setColor(Color.TRANSPARENT);
         paint.setStrokeWidth(3);
         paint.setStyle(Paint.Style.STROKE);
         //绘制辅助线
         canvas.drawPath(mAssistPath,paint);
 
         paint.setColor(Color.GREEN);
+        paint.setStrokeWidth(5);
         Path dst = new Path();
         dst.rLineTo(0, 0);
+        dst.lineTo(0, 0);
         float distance = mPathMeasure.getLength() * drawScale;
         if (mPathMeasure.getSegment(0, distance, dst, true)) {
             //绘制线
@@ -83,31 +83,12 @@ public class BezierView extends View {
             float[] pos = new float[2];
             mPathMeasure.getPosTan(distance, pos, null);
             //绘制阴影
-            drawShadowArea(canvas, dst, pos);
             //绘制点
             drawPoint(canvas,pos);
         }
-        /*greenPaint.setPathEffect(getPathEffect(mPathMeasure.getLength()));
-        canvas.drawPath(mPath, greenPaint);*/
-        //mPath.reset();adb shell screenrecord --bit-rate 2000000 /sdcard/test.mp4
 
     }
 
-    /**
-     * 绘制阴影
-     * @param canvas
-     * @param path
-     * @param pos
-     */
-    private void drawShadowArea(Canvas canvas, Path path, float[] pos) {
-        path.lineTo(pos[0], defYAxis);
-        path.lineTo(defXAxis, defYAxis);
-        path.close();
-        Paint paint = new Paint();
-        paint.setStyle(Paint.Style.FILL);
-        paint.setColor(0x88CCCCCC);
-        canvas.drawPath(path, paint);
-    }
 
     /**
      * 绘制点
@@ -119,16 +100,12 @@ public class BezierView extends View {
         redPaint.setColor(Color.RED);
         redPaint.setStrokeWidth(3);
         redPaint.setStyle(Paint.Style.FILL);
-        for (Point point : mPointList) {
+        for (PointF point : mPointList) {
             if (point.x > pos[0]) {
                 break;
             }
             canvas.drawCircle(point.x, point.y, 10, redPaint);
         }
-    }
-
-    private PathEffect getPathEffect(float length) {
-        return new DashPathEffect(new float[]{length * drawScale, length}, 0);
     }
 
     private void measurePath() {
@@ -146,14 +123,14 @@ public class BezierView extends View {
         final int lineSize = mPointList.size();
         for (int valueIndex = 0; valueIndex < lineSize; ++valueIndex) {
             if (Float.isNaN(currentPointX)) {
-                Point point = mPointList.get(valueIndex);
+                PointF point = mPointList.get(valueIndex);
                 currentPointX = point.x;
                 currentPointY = point.y;
             }
             if (Float.isNaN(previousPointX)) {
                 //是否是第一个点
                 if (valueIndex > 0) {
-                    Point point = mPointList.get(valueIndex - 1);
+                    PointF point = mPointList.get(valueIndex - 1);
                     previousPointX = point.x;
                     previousPointY = point.y;
                 } else {
@@ -166,7 +143,7 @@ public class BezierView extends View {
             if (Float.isNaN(prePreviousPointX)) {
                 //是否是前两个点
                 if (valueIndex > 1) {
-                    Point point = mPointList.get(valueIndex - 2);
+                    PointF point = mPointList.get(valueIndex - 2);
                     prePreviousPointX = point.x;
                     prePreviousPointY = point.y;
                 } else {
@@ -178,7 +155,7 @@ public class BezierView extends View {
 
             // 判断是不是最后一个点了
             if (valueIndex < lineSize - 1) {
-                Point point = mPointList.get(valueIndex + 1);
+                PointF point = mPointList.get(valueIndex + 1);
                 nextPointX = point.x;
                 nextPointY = point.y;
             } else {

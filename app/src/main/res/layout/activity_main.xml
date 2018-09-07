@@ -36,5 +36,12 @@
         android:layout_toStartOf="@+id/button"
         android:id="@+id/editText"/>
 
+    <SeekBar
+        android:id="@+id/seekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:max="100" />
+
 
 </RelativeLayout>
